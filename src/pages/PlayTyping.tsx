@@ -111,6 +111,11 @@ const PlayTyping = () => {
     syncBalances(walletAddress).catch(console.error);
   }, [showPayment, walletAddress, syncBalances]);
 
+  // Safety: never leave the UI stuck in a "processing" state when the modal is closed.
+  useEffect(() => {
+    if (!showPayment) setIsProcessing(false);
+  }, [showPayment]);
+
   const startNewGame = useCallback(async (token: PaymentToken) => {
     if (!walletAddress) { toast.error('Please connect your wallet first'); return; }
     setIsProcessing(true);
