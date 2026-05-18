@@ -128,6 +128,11 @@ const Play2048 = () => {
     });
   }, [showPayment, walletAddress, syncBalances]);
 
+  // Safety: never leave the UI stuck in "processing" once the modal closes.
+  useEffect(() => {
+    if (!showPayment) setIsProcessing(false);
+  }, [showPayment]);
+
   const startNewGame = useCallback(async (token: PaymentToken) => {
     if (!walletAddress) { toast.error('Please connect your wallet first'); return; }
     setIsProcessing(true);
