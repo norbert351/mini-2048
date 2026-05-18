@@ -165,31 +165,48 @@ const PlayTyping = () => {
   // End game session when game finishes (wait for finalScore to be computed)
   useEffect(() => {
     if (phase !== 'finished' || !sessionId || !walletAddress || submittedRef.current) return;
-    // Wait until the score has been calculated by the hook's effect
-    if (finalScore <= 0 && correctWords === 0 && totalAttempts === 0) return;
+    // If the player attempted any words, wait for finalScore to be computed by the hook
+    // (the hook's score effect runs after this one on the same render).
+    if (totalAttempts > 0 && finalScore <= 0) {
+      console.info('[typing] waiting for finalScore to compute', { totalAttempts, finalScore });
+      return;
+    }
     submittedRef.current = true;
-    console.info('[typing] submitting score', {
-      wallet: walletAddress, wpm, accuracy, bestStreak, finalScore, correctWords, totalAttempts,
-    });
-    fetch(`${SUPABASE_URL}/functions/v1/update-game-score`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        session_id: sessionId, wallet_address: walletAddress,
-        score: finalScore, wpm, accuracy, best_streak: bestStreak, end_game: true,
-      }),
-    }).then(async (res) => {
-      const data = await res.json().catch(() => ({}));
-      console.info('[typing] save result', { ok: res.ok, data });
-      if (res.ok) {
-        setScoreSaved(true);
-        toast.success('Score saved to leaderboard');
-        queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
-      } else {
+    const payload = {
+      session_id: sessionId,
+      wallet_address: walletAddress,
+      score: finalScore,
+      wpm, accuracy, best_streak: bestStreak,
+      end_game: true,
+    };
+    console.info('[typing] submitting score', { ...payload, correctWords, totalAttempts, game_type: 'typing' });
+
+    (async () => {
+      try {
+        const res = await fetch(`${SUPABASE_URL}/functions/v1/update-game-score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json().catch(() => ({}));
+        console.info('[typing] save result', { status: res.status, ok: res.ok, data });
+        if (res.ok && data?.success) {
+          setScoreSaved(true);
+          setSessionStatus('locked');
+          toast.success('Score saved to leaderboard');
+          queryClient.invalidateQueries({ queryKey: ['leaderboard'] });
+        } else {
+          submittedRef.current = false;
+          const reason = data?.error || `HTTP ${res.status}`;
+          console.error('Speed Typing Save Error:', reason, data);
+          toast.error(`Failed to save leaderboard score: ${reason}`);
+        }
+      } catch (e: any) {
         submittedRef.current = false;
-        toast.error(data?.error || 'Failed to save score');
+        console.error('Speed Typing Save Error:', e);
+        toast.error('Failed to save leaderboard score');
       }
-    }).catch((e) => { submittedRef.current = false; console.error(e); toast.error('Failed to save score'); });
-    setSessionStatus('locked');
+    })();
   }, [phase, sessionId, walletAddress, finalScore, wpm, accuracy, bestStreak, correctWords, totalAttempts, queryClient]);
 
   const needsWalletConnection = !walletAddress;
