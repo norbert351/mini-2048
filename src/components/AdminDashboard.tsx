@@ -57,7 +57,7 @@ export const AdminDashboard = () => {
             const lbEntry = gameLeaderboard.find(l => l.player_id === pid);
             const sessionBest = Math.max(...playerSessions.map(s => s.score || 0), 0);
             // Prefer cumulative leaderboard score when present (matches LB UI)
-            const bestScore = Math.max(lbEntry?.score || 0, sessionBest);
+            const bestScore = Math.max(lbEntry?.high_score || 0, sessionBest);
             const totalGames = playerSessions.length;
             return { ...player, bestScore, totalGames };
           })
