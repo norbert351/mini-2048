@@ -23,7 +23,7 @@ export const AdminDashboard = () => {
       const [playersRes, sessionsRes, leaderboardRes] = await Promise.all([
         supabase.from('players').select('id, wallet_address, username, created_at'),
         supabase.from('game_sessions').select('id, score, fee_paid, started_at, game_type, player_id'),
-        supabase.from('leaderboard').select('player_id, score, game_type'),
+        supabase.from('leaderboard').select('player_id, high_score, game_type'),
       ]);
 
       const players = playersRes.data || [];
