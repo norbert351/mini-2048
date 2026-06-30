@@ -38,7 +38,7 @@ export const AdminDashboard = () => {
       const playerMap = new Map(players.map(p => [p.id, p]));
 
       // Separate sessions by game type and get unique players per game
-      const gameTypes = ['2048', 'tetris'] as const;
+      const gameTypes = ['2048', 'tetris', 'typing'] as const;
       const playersByGame: Record<string, any[]> = {};
 
       for (const gt of gameTypes) {
@@ -180,12 +180,18 @@ export const AdminDashboard = () => {
               <TabsTrigger value="tetris" className="flex-1">
                 🧱 Tetris ({stats?.playersByGame?.['tetris']?.length || 0})
               </TabsTrigger>
+              <TabsTrigger value="typing" className="flex-1">
+                ⌨️ Typing ({stats?.playersByGame?.['typing']?.length || 0})
+              </TabsTrigger>
             </TabsList>
             <TabsContent value="2048" className="mt-3">
               <PlayerList players={stats?.playersByGame?.['2048'] || []} />
             </TabsContent>
             <TabsContent value="tetris" className="mt-3">
               <PlayerList players={stats?.playersByGame?.['tetris'] || []} />
+            </TabsContent>
+            <TabsContent value="typing" className="mt-3">
+              <PlayerList players={stats?.playersByGame?.['typing'] || []} />
             </TabsContent>
           </Tabs>
         </CardContent>
