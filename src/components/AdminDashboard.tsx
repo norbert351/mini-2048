@@ -20,13 +20,15 @@ export const AdminDashboard = () => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ['admin-stats'],
     queryFn: async () => {
-      const [playersRes, sessionsRes] = await Promise.all([
+      const [playersRes, sessionsRes, leaderboardRes] = await Promise.all([
         supabase.from('players').select('id, wallet_address, username, created_at'),
         supabase.from('game_sessions').select('id, score, fee_paid, started_at, game_type, player_id'),
+        supabase.from('leaderboard').select('player_id, high_score, game_type'),
       ]);
 
       const players = playersRes.data || [];
       const sessions = sessionsRes.data || [];
+      const leaderboard = leaderboardRes.data || [];
 
       const totalFees = sessions.reduce(
         (sum, s) => sum + parseFloat(s.fee_paid?.toString() || '0'),
@@ -34,22 +36,28 @@ export const AdminDashboard = () => {
       );
       const highestScore = Math.max(...sessions.map(s => s.score || 0), 0);
 
-      // Build a map of player_id -> player info
       const playerMap = new Map(players.map(p => [p.id, p]));
 
-      // Separate sessions by game type and get unique players per game
       const gameTypes = ['2048', 'tetris', 'typing'] as const;
       const playersByGame: Record<string, any[]> = {};
 
       for (const gt of gameTypes) {
         const gameSessions = sessions.filter(s => s.game_type === gt);
-        const uniquePlayerIds = [...new Set(gameSessions.map(s => s.player_id))];
+        const gameLeaderboard = leaderboard.filter(l => l.game_type === gt);
+        // Union of players that appear in either sessions or the leaderboard for this game
+        const uniquePlayerIds = [...new Set([
+          ...gameSessions.map(s => s.player_id),
+          ...gameLeaderboard.map(l => l.player_id),
+        ])];
         playersByGame[gt] = uniquePlayerIds
           .map(pid => {
             const player = playerMap.get(pid);
             if (!player) return null;
             const playerSessions = gameSessions.filter(s => s.player_id === pid);
-            const bestScore = Math.max(...playerSessions.map(s => s.score || 0), 0);
+            const lbEntry = gameLeaderboard.find(l => l.player_id === pid);
+            const sessionBest = Math.max(...playerSessions.map(s => s.score || 0), 0);
+            // Prefer cumulative leaderboard score when present (matches LB UI)
+            const bestScore = Math.max(lbEntry?.high_score || 0, sessionBest);
             const totalGames = playerSessions.length;
             return { ...player, bestScore, totalGames };
           })
